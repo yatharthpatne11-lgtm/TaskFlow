@@ -1,0 +1,22 @@
+# Node dependencies
+node_modules/
+**/node_modules/
+
+# Build folders
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+
+# IDE & OS settings
+.vscode/
+.DS_Store
+
+# Temporary / Zip files
+*.zip
+backend.v2/
+backend.v3/
+backend,v4/
+vanilla-demo/
