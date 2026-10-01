@@ -82,6 +82,19 @@ public class TaskDAO {
         }
     }
 
+    public boolean updateQuickNote(int taskId, String quickNote) {
+        String sql = "UPDATE tasks SET quick_note = ?, updated_at = NOW() WHERE id = ?";
+        try (Connection conn = DbConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            if (quickNote != null) stmt.setString(1, quickNote); else stmt.setNull(1, Types.VARCHAR);
+            stmt.setInt(2, taskId);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new DatabaseException("Failed to update quick note for task ID: " + taskId, e);
+        }
+    }
+
     public Optional<Task> findById(int id) {
         String sql = "SELECT t.*, u.name AS assignee_name, c.name AS creator_name, col.name AS column_name FROM tasks t LEFT JOIN users u ON t.assignee_id = u.id JOIN users c ON t.creator_id = c.id JOIN columns col ON t.column_id = col.id WHERE t.id = ?";
         try (Connection conn = DbConfig.getConnection();
@@ -118,11 +131,22 @@ public class TaskDAO {
         return 0;
     }
 
+    private boolean hasColumn(ResultSet rs, String columnName) throws SQLException {
+        ResultSetMetaData md = rs.getMetaData();
+        for (int i = 1; i <= md.getColumnCount(); i++) {
+            if (columnName.equalsIgnoreCase(md.getColumnLabel(i))) return true;
+        }
+        return false;
+    }
+
     private Task mapResultSetToTask(ResultSet rs) throws SQLException {
         Task t = new Task();
         t.setId(rs.getInt("id"));
         t.setTitle(rs.getString("title"));
         t.setDescription(rs.getString("description"));
+        // Older databases may not have the quick_note column yet (see database/migration_add_quick_note.sql).
+        // Don't let that take the whole board down - just treat the note as empty.
+        t.setQuickNote(hasColumn(rs, "quick_note") ? rs.getString("quick_note") : null);
         t.setBoardId(rs.getInt("board_id"));
         t.setColumnId(rs.getInt("column_id"));
         t.setPriority(rs.getString("priority"));

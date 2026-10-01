@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Plus, Filter, Search } from 'lucide-react';
 import TaskCard from '../components/TaskCard';
 import TaskModal from '../components/TaskModal';
+import MyActionsList from '../components/MyActionsList';
 import { fetchBoardTasks, updateTaskPosition, deleteTaskById } from '../services/taskApi';
 import { useAuth } from '../context/AuthContext';
 
@@ -24,6 +25,7 @@ export default function BoardDetails() {
   const [selectedPriority, setSelectedPriority] = useState('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTask, setActiveTask] = useState(null);
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
     loadTasks();
@@ -31,12 +33,16 @@ export default function BoardDetails() {
 
   const loadTasks = async () => {
     try {
+      setLoadError(null);
       const res = await fetchBoardTasks(boardId || 1);
       if (res.success) {
         setTasks(res.data);
+      } else {
+        setLoadError(res.message || 'The server could not load this board.');
       }
     } catch (err) {
       console.error('Failed to load board tasks', err);
+      setLoadError(err.response?.data?.message || err.message || 'Could not reach the server.');
     } finally {
       setLoading(false);
     }
@@ -85,6 +91,13 @@ export default function BoardDetails() {
     }
   };
 
+  // Merge only the saved note so the card and the My Actions table stay in sync
+  const handleQuickNoteSaved = (updatedTask) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === updatedTask.id ? { ...t, quickNote: updatedTask.quickNote } : t))
+    );
+  };
+
   const filteredTasks = tasks.filter((task) => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -108,6 +121,13 @@ export default function BoardDetails() {
           </button>
         )}
       </div>
+
+      {loadError && (
+        <div role="alert" style={{ background: '#fdecea', color: '#8a1f17', border: '1px solid #f5c2bd', borderRadius: 8, padding: '10px 14px', margin: '0 0 16px' }}>
+          <strong>Couldn't load the board:</strong> {loadError}{' '}
+          <button className="btn-primary" style={{ marginLeft: 8, padding: '4px 10px' }} onClick={loadTasks}>Retry</button>
+        </div>
+      )}
 
       {/* Filter Toolbar */}
       <div className="board-toolbar">
@@ -160,6 +180,7 @@ export default function BoardDetails() {
                     onDragStart={handleDragStart}
                     onClick={() => { setActiveTask(task); setIsModalOpen(true); }}
                     onDelete={handleDeleteTask}
+                    onQuickNoteSaved={handleQuickNoteSaved}
                   />
                 ))}
               </div>
@@ -167,6 +188,9 @@ export default function BoardDetails() {
           );
         })}
       </div>
+
+      {/* Personal agenda: only tasks assigned to the logged-in user */}
+      <MyActionsList tasks={tasks} columns={COLUMNS} onQuickNoteSaved={handleQuickNoteSaved} />
 
       {isModalOpen && (
         <TaskModal

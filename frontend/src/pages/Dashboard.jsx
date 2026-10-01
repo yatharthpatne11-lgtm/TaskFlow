@@ -10,6 +10,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -21,9 +22,12 @@ export default function Dashboard() {
       const res = await apiClient.get('/tasks?boardId=1');
       if (res.data.success) {
         setTasks(res.data.data);
+      } else {
+        setLoadError(res.data.message || 'The server could not load board data.');
       }
     } catch (err) {
       console.error("Failed to load dashboard metrics", err);
+      setLoadError(err.response?.data?.message || err.message || 'Could not reach the server.');
     } finally {
       setLoading(false);
     }
@@ -51,6 +55,12 @@ export default function Dashboard() {
           <ArrowRight size={16} />
         </Link>
       </div>
+
+      {loadError && (
+        <div role="alert" style={{ background: '#fdecea', color: '#8a1f17', border: '1px solid #f5c2bd', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+          <strong>Couldn't load board data:</strong> {loadError}
+        </div>
+      )}
 
       {/* Real Statistics Grid */}
       <div className="stats-grid">
