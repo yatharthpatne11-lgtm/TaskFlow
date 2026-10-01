@@ -19,3 +19,8 @@ export const deleteTaskById = async (taskId) => {
   const response = await apiClient.delete(`/tasks/${taskId}`);
   return response.data;
 };
+
+export const updateQuickNote = async (taskId, quickNote) => {
+  const response = await apiClient.patch(`/tasks/${taskId}/quick-note`, { quickNote });
+  return response.data;
+};

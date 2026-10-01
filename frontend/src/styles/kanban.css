@@ -66,6 +66,37 @@
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
 .error-banner { margin-bottom: 16px; padding: 10px 14px; border-radius: 12px; background: var(--berry-tint); color: var(--berry); font-size: 0.88rem; font-weight: 500; }
 
+/* ---------- Quick Note (task cards + My Actions) ---------- */
+.quick-note { margin-top: 12px; padding: 9px 11px; background: var(--linen); border: 1px dashed var(--line-strong); border-radius: 10px; cursor: default; }
+.quick-note-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.quick-note-label { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: var(--cocoa-2); }
+.quick-note-lock { display: inline-flex; color: var(--cocoa-3); }
+.quick-note-text { font-size: 0.84rem; color: var(--cocoa); white-space: pre-wrap; overflow-wrap: anywhere; }
+.quick-note-empty { color: var(--cocoa-3); font-style: italic; }
+.quick-note-hint { display: flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 0.72rem; color: var(--cocoa-3); }
+.quick-note-edit-btn { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; padding: 4px 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper); color: var(--cocoa-2); font-size: 0.76rem; font-weight: 600; transition: background 0.15s, border-color 0.15s; }
+.quick-note-edit-btn:hover { background: var(--moss-tint); border-color: var(--moss); color: var(--moss-dark); }
+.quick-note-textarea { width: 100%; min-height: 64px; padding: 8px 10px; background: var(--paper); border: 1px solid var(--line-strong); border-radius: 10px; outline: none; resize: vertical; font-size: 0.84rem; transition: border-color 0.15s, box-shadow 0.15s; }
+.quick-note-textarea:focus { border-color: var(--moss); box-shadow: var(--ring); }
+.quick-note-textarea:disabled { background: var(--linen); color: var(--cocoa-2); }
+.quick-note-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.quick-note-error { margin-top: 6px; font-size: 0.76rem; font-weight: 500; color: var(--berry); }
+.btn-sm { padding: 5px 12px; border-radius: 9px; font-size: 0.78rem; }
+.quick-note-compact { margin-top: 0; padding: 0; background: transparent; border: 0; }
+
+/* ---------- My Actions ---------- */
+.my-actions { margin-top: 34px; }
+.my-actions-header { display: flex; align-items: center; gap: 10px; }
+.my-actions-header h3 { display: flex; align-items: center; gap: 8px; font-size: 1.35rem; }
+.my-actions-subtitle { margin: 2px 0 16px; }
+.actions-table { width: 100%; min-width: 780px; border-collapse: collapse; }
+.actions-table th { padding: 13px 16px; text-align: left; font-size: 0.82rem; font-weight: 600; color: var(--cocoa-2); background: var(--linen); border-bottom: 1px solid var(--line); }
+.actions-table td { padding: 14px 16px; border-bottom: 1px dashed var(--line-strong); vertical-align: top; }
+.actions-table tbody tr:last-child td { border-bottom: 0; }
+.actions-table tbody tr:hover { background: var(--linen); }
+.actions-title { font-weight: 600; min-width: 180px; }
+.actions-note-cell { min-width: 280px; width: 36%; }
+
 @media (max-width: 640px) {
   .kanban-header { flex-direction: column; }
   .search-box { max-width: none; }

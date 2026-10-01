@@ -6,6 +6,7 @@ public class Task {
     private Integer id;
     private String title;
     private String description;
+    private String quickNote;
     private Integer boardId;
     private Integer columnId;
     private String columnName;
@@ -30,6 +31,9 @@ public class Task {
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+
+    public String getQuickNote() { return quickNote; }
+    public void setQuickNote(String quickNote) { this.quickNote = quickNote; }
 
     public Integer getBoardId() { return boardId; }
     public void setBoardId(Integer boardId) { this.boardId = boardId; }
