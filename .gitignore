@@ -20,3 +20,11 @@ backend.v2/
 backend.v3/
 backend,v4/
 vanilla-demo/
+
+# Maven build output
+target/
+**/target/
+backend.v5/
+database.v1/
+frontend.v1/
+.github/modernize/
