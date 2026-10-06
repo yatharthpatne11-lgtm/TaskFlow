@@ -1,0 +1,5 @@
+0:0:0:0:0:0:0:1 - - [07/Oct/2026:00:12:34 +0530] "GET /api/auth/me HTTP/1.1" 401 59 http-bio-8080-exec-9 17
+0:0:0:0:0:0:0:1 - - [07/Oct/2026:00:12:34 +0530] "GET /api/auth/me HTTP/1.1" 401 59 http-bio-8080-exec-10 1
+0:0:0:0:0:0:0:1 - - [07/Oct/2026:00:33:29 +0530] "POST /api/auth/login HTTP/1.1" 200 258 http-bio-8080-exec-1 658
+0:0:0:0:0:0:0:1 - - [07/Oct/2026:00:33:29 +0530] "GET /api/tasks?boardId=1 HTTP/1.1" 200 7797 http-bio-8080-exec-2 18
+0:0:0:0:0:0:0:1 - - [07/Oct/2026:00:33:29 +0530] "GET /api/tasks?boardId=1 HTTP/1.1" 200 7797 http-bio-8080-exec-3 11
