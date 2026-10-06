@@ -13,5 +13,6 @@ COPY --from=build /app/target/api.war /usr/local/tomcat/webapps/ROOT.war
 # Keep memory low enough for Render's free plan (512 MB)
 ENV JAVA_OPTS="-Xmx350m -Xss512k"
 
-# Render gives the app a $PORT; make Tomcat listen on it (falls back to 8080)
-CMD ["sh", "-c", "sed -i \"s/Connector port=\\\"8080\\\"/Connector port=\\\"${PORT:-8080}\\\"/\" conf/server.xml && exec catalina.sh run"]
+COPY start.sh /usr/local/tomcat/start.sh
+RUN sed -i 's/\r$//' /usr/local/tomcat/start.sh && chmod +x /usr/local/tomcat/start.sh
+CMD ["/usr/local/tomcat/start.sh"]
