@@ -10,12 +10,13 @@ export default function TaskCard({ task, onDragStart, onClick, onDelete, onQuick
   const due = parseDate(task.dueDate);
   const isOverdue = due && due < new Date() && task.columnName !== 'DONE';
   const isAssignee = !!user && task.assigneeId != null && user.id === task.assigneeId;
-  const isAuthorizedToDelete = user?.systemRoleName === 'ADMIN' || user?.systemRoleName === 'MANAGER';
+  const isAdmin = user?.systemRoleName === 'ADMIN';
+  const isAuthorizedToDelete = isAdmin;
 
   return (
     <div 
       className="task-card"
-      draggable={user?.systemRoleName !== 'VIEWER' && !isNoteEditing}
+      draggable={isAdmin && !isNoteEditing}
       onDragStart={(e) => onDragStart(e, task.id)}
       onClick={onClick}
     >

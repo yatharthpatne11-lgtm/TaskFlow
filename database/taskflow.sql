@@ -186,14 +186,14 @@ CREATE TABLE notifications (
 
 -- ============================================================
 -- DEMO SEED DATA (Password for all demo accounts: Password@123)
--- SHA-256 Hash: 8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92
+-- BCrypt hash of the demo password "Password@123"
 -- ============================================================
 
 INSERT INTO users (id, name, email, password_hash, system_role_id) VALUES
-(1, 'System Admin', 'admin@taskflow.local', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', 1),
-(2, 'Project Manager', 'manager@taskflow.local', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', 2),
-(3, 'Rahul Sharma', 'member@taskflow.local', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', 3),
-(4, 'Priya Verma', 'viewer@taskflow.local', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', 4);
+(1, 'System Admin', 'admin@taskflow.local', '$2a$12$qpR4ee.9DwlyPD9MogoWyuglDrOdkuzaX7CzcFYW/NAipo3EOK8B.', 1),
+(2, 'Project Manager', 'manager@taskflow.local', '$2a$12$qpR4ee.9DwlyPD9MogoWyuglDrOdkuzaX7CzcFYW/NAipo3EOK8B.', 2),
+(3, 'Rahul Sharma', 'member@taskflow.local', '$2a$12$qpR4ee.9DwlyPD9MogoWyuglDrOdkuzaX7CzcFYW/NAipo3EOK8B.', 3),
+(4, 'Priya Verma', 'viewer@taskflow.local', '$2a$12$qpR4ee.9DwlyPD9MogoWyuglDrOdkuzaX7CzcFYW/NAipo3EOK8B.', 4);
 
 INSERT INTO workspaces (id, name, owner_id) VALUES (1, 'Main College Workspace', 1);
 

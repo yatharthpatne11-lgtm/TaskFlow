@@ -18,6 +18,7 @@ const COLUMNS = [
 export default function BoardDetails() {
   const { id: boardId } = useParams();
   const { user } = useAuth();
+  const isAdmin = user?.systemRoleName === 'ADMIN';
   
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +59,7 @@ export default function BoardDetails() {
 
   const handleDrop = async (e, columnId) => {
     e.preventDefault();
+    if (!isAdmin) return; // only ADMIN can move tasks
     const taskId = parseInt(e.dataTransfer.getData('taskId'));
     const task = tasks.find((t) => t.id === taskId);
 
@@ -112,10 +114,10 @@ export default function BoardDetails() {
       <div className="kanban-header">
         <div>
           <h2>Main Project Kanban Board</h2>
-          <p className="text-muted">Drag cards across columns to update task progress in real-time.</p>
+          <p className="text-muted">{isAdmin ? 'Drag cards across columns to update task progress in real-time.' : 'View only: only admins can add or change tasks.'}</p>
         </div>
 
-        {user?.systemRoleName !== 'VIEWER' && (
+        {isAdmin && (
           <button className="btn-primary" onClick={() => { setActiveTask(null); setIsModalOpen(true); }}>
             <Plus size={16} /> Add Task
           </button>
@@ -178,7 +180,7 @@ export default function BoardDetails() {
                     key={task.id}
                     task={task}
                     onDragStart={handleDragStart}
-                    onClick={() => { setActiveTask(task); setIsModalOpen(true); }}
+                    onClick={isAdmin ? () => { setActiveTask(task); setIsModalOpen(true); } : undefined}
                     onDelete={handleDeleteTask}
                     onQuickNoteSaved={handleQuickNoteSaved}
                   />

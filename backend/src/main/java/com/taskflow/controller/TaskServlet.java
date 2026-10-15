@@ -26,6 +26,11 @@ public class TaskServlet extends HttpServlet {
     private final TaskDAO taskDAO = new TaskDAO();
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
+    // Only the ADMIN role may add, move, or delete tasks.
+    private static boolean isAdmin(User user) {
+        return user != null && "ADMIN".equalsIgnoreCase(user.getSystemRoleName());
+    }
+
     // Servlet 3.0 HttpServlet has no doPatch(), so PATCH requests are routed manually.
     @Override
     protected void service(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -68,9 +73,9 @@ public class TaskServlet extends HttpServlet {
             return;
         }
 
-        if ("VIEWER".equalsIgnoreCase(currentUser.getSystemRoleName())) {
+        if (!isAdmin(currentUser)) {
             resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            objectMapper.writeValue(resp.getWriter(), ApiResponse.error("VIEWER role is not allowed to create tasks."));
+            objectMapper.writeValue(resp.getWriter(), ApiResponse.error("Access Denied: Only ADMIN can add tasks."));
             return;
         }
 
@@ -93,9 +98,9 @@ public class TaskServlet extends HttpServlet {
         HttpSession session = req.getSession(false);
         User currentUser = (session != null) ? (User) session.getAttribute("user") : null;
 
-        if (currentUser == null || "VIEWER".equalsIgnoreCase(currentUser.getSystemRoleName())) {
+        if (!isAdmin(currentUser)) {
             resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            objectMapper.writeValue(resp.getWriter(), ApiResponse.error("Insufficient authorization to update task."));
+            objectMapper.writeValue(resp.getWriter(), ApiResponse.error("Access Denied: Only ADMIN can change tasks."));
             return;
         }
 
@@ -187,9 +192,9 @@ public class TaskServlet extends HttpServlet {
         HttpSession session = req.getSession(false);
         User currentUser = (session != null) ? (User) session.getAttribute("user") : null;
 
-        if (currentUser == null || (!"ADMIN".equalsIgnoreCase(currentUser.getSystemRoleName()) && !"MANAGER".equalsIgnoreCase(currentUser.getSystemRoleName()))) {
+        if (!isAdmin(currentUser)) {
             resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            objectMapper.writeValue(resp.getWriter(), ApiResponse.error("Access Denied: Only ADMIN or MANAGER can delete tasks."));
+            objectMapper.writeValue(resp.getWriter(), ApiResponse.error("Access Denied: Only ADMIN can delete tasks."));
             return;
         }
 
