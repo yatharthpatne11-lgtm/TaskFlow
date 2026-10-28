@@ -102,6 +102,10 @@ public class AuthServlet extends HttpServlet {
     /**
      * Handles User Login
      */
+    private static boolean isHttps(HttpServletRequest request) {
+        return request.isSecure() || "https".equalsIgnoreCase(request.getHeader("X-Forwarded-Proto"));
+    }
+
     private void handleLogin(JsonNode body, HttpServletRequest request, HttpServletResponse response)
             throws IOException {
 
@@ -121,6 +125,13 @@ public class AuthServlet extends HttpServlet {
 
                 HttpSession session = request.getSession(true);
                 session.setAttribute("user", user);
+
+                // When deployed (HTTPS, frontend on a different domain such as Vercel), browsers only send the
+                // session cookie back if it is marked SameSite=None; Secure. Local http dev is left unchanged.
+                if (isHttps(request)) {
+                    response.setHeader("Set-Cookie",
+                            "JSESSIONID=" + session.getId() + "; Path=/; HttpOnly; Secure; SameSite=None");
+                }
 
                 response.setStatus(HttpServletResponse.SC_OK);
                 objectMapper.writeValue(response.getWriter(), ApiResponse.success("Login successful", sanitize(user)));
