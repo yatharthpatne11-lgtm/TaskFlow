@@ -18,7 +18,7 @@ const COLUMNS = [
 export default function BoardDetails() {
   const { id: boardId } = useParams();
   const { user } = useAuth();
-  const isAdmin = user?.systemRoleName === 'ADMIN';
+  const canManage = user?.systemRoleName === 'ADMIN' || user?.systemRoleName === 'MANAGER';
   
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +59,7 @@ export default function BoardDetails() {
 
   const handleDrop = async (e, columnId) => {
     e.preventDefault();
-    if (!isAdmin) return; // only ADMIN can move tasks
+    if (!canManage) return; // only ADMIN and MANAGER can move tasks
     const taskId = parseInt(e.dataTransfer.getData('taskId'));
     const task = tasks.find((t) => t.id === taskId);
 
@@ -79,6 +79,11 @@ export default function BoardDetails() {
       });
     } catch (err) {
       console.error('Failed to update task position', err);
+      const status = err.response?.status;
+      alert(
+        (err.response?.data?.message || err.message || 'Could not save the change.') +
+        (status ? ' (HTTP ' + status + ')' : '')
+      );
       loadTasks(); // Revert on failure
     }
   };
@@ -114,10 +119,10 @@ export default function BoardDetails() {
       <div className="kanban-header">
         <div>
           <h2>Main Project Kanban Board</h2>
-          <p className="text-muted">{isAdmin ? 'Drag cards across columns to update task progress in real-time.' : 'View only: only admins can add or change tasks.'}</p>
+          <p className="text-muted">{canManage ? 'Drag cards across columns to update task progress in real-time.' : 'View only: only admins and managers can add or change tasks.'}</p>
         </div>
 
-        {isAdmin && (
+        {canManage && (
           <button className="btn-primary" onClick={() => { setActiveTask(null); setIsModalOpen(true); }}>
             <Plus size={16} /> Add Task
           </button>
@@ -180,7 +185,7 @@ export default function BoardDetails() {
                     key={task.id}
                     task={task}
                     onDragStart={handleDragStart}
-                    onClick={isAdmin ? () => { setActiveTask(task); setIsModalOpen(true); } : undefined}
+                    onClick={canManage ? () => { setActiveTask(task); setIsModalOpen(true); } : undefined}
                     onDelete={handleDeleteTask}
                     onQuickNoteSaved={handleQuickNoteSaved}
                   />

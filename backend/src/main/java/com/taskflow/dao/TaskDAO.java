@@ -82,6 +82,19 @@ public class TaskDAO {
         }
     }
 
+    public boolean updateAssignee(int taskId, Integer assigneeId) {
+        String sql = "UPDATE tasks SET assignee_id = ?, updated_at = NOW() WHERE id = ?";
+        try (Connection conn = DbConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            if (assigneeId != null) stmt.setInt(1, assigneeId); else stmt.setNull(1, Types.INTEGER);
+            stmt.setInt(2, taskId);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new DatabaseException("Failed to update assignee for task ID: " + taskId, e);
+        }
+    }
+
     public boolean updateQuickNote(int taskId, String quickNote) {
         String sql = "UPDATE tasks SET quick_note = ?, updated_at = NOW() WHERE id = ?";
         try (Connection conn = DbConfig.getConnection();

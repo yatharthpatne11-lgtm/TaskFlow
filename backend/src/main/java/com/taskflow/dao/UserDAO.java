@@ -94,6 +94,30 @@ public class UserDAO {
         }
     }
 
+    public boolean updateStatus(int userId, String status) {
+        String sql = "UPDATE users SET status = ?, updated_at = NOW() WHERE id = ?";
+        try (Connection conn = DbConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, status);
+            stmt.setInt(2, userId);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new DatabaseException("Error updating status for user ID: " + userId, e);
+        }
+    }
+
+    public boolean updateRole(int userId, int roleId) {
+        String sql = "UPDATE users SET system_role_id = ?, updated_at = NOW() WHERE id = ?";
+        try (Connection conn = DbConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, roleId);
+            stmt.setInt(2, userId);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new DatabaseException("Error updating role for user ID: " + userId, e);
+        }
+    }
+
     private User mapResultSetToUser(ResultSet rs) throws SQLException {
         User u = new User();
         u.setId(rs.getInt("id"));

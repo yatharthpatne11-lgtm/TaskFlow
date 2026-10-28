@@ -7,6 +7,7 @@ import com.taskflow.dao.UserDAO;
 import com.taskflow.dto.ApiResponse;
 import com.taskflow.model.User;
 import com.taskflow.util.PasswordUtil;
+import com.taskflow.util.SessionUser;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -39,8 +40,7 @@ public class AuthServlet extends HttpServlet {
             return;
         }
 
-        HttpSession session = request.getSession(false);
-        User sessionUser = (session != null) ? (User) session.getAttribute("user") : null;
+        User sessionUser = SessionUser.current(request);
 
         if (sessionUser == null) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -122,6 +122,13 @@ public class AuthServlet extends HttpServlet {
             User user = userDAO.findByEmail(email.trim()).orElse(null);
 
             if (user != null && PasswordUtil.verifyPassword(plainPassword.trim(), user.getPasswordHash())) {
+
+                if (user.getStatus() != null && !"ACTIVE".equalsIgnoreCase(user.getStatus())) {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    objectMapper.writeValue(response.getWriter(), ApiResponse.error(
+                            "This account is " + user.getStatus().toLowerCase() + ". Please contact an administrator."));
+                    return;
+                }
 
                 HttpSession session = request.getSession(true);
                 session.setAttribute("user", user);

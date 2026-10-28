@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { createNewTask } from '../services/taskApi';
+import { createNewTask, assignTask, fetchAssignableUsers } from '../services/taskApi';
 
 export default function TaskModal({ boardId, task, onClose, onTaskSaved }) {
   const [title, setTitle] = useState(task ? task.title : '');
@@ -8,8 +8,21 @@ export default function TaskModal({ boardId, task, onClose, onTaskSaved }) {
   const [priority, setPriority] = useState(task ? task.priority : 'MEDIUM');
   const [columnId, setColumnId] = useState(task ? task.columnId : 1);
   const [estimatedEffort, setEstimatedEffort] = useState(task ? task.estimatedEffortHours : 2.0);
+  const [assigneeId, setAssigneeId] = useState(task && task.assigneeId ? String(task.assigneeId) : '');
+  const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Load the people this task can be assigned to
+  useEffect(() => {
+    let cancelled = false;
+    fetchAssignableUsers()
+      .then((res) => { if (!cancelled && res.success) setPeople(res.data || []); })
+      .catch((err) => {
+        if (!cancelled) setError(err.response?.data?.message || 'Could not load the list of people to assign.');
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,22 +30,33 @@ export default function TaskModal({ boardId, task, onClose, onTaskSaved }) {
     setError('');
 
     try {
-      await createNewTask({
-        title,
-        description,
-        boardId: parseInt(boardId),
-        columnId: parseInt(columnId),
-        priority,
-        estimatedEffortHours: parseFloat(estimatedEffort),
-        position: 0
-      });
+      const chosen = assigneeId === '' ? null : parseInt(assigneeId, 10);
+
+      if (task) {
+        // Existing task: only the assignee can be changed here
+        await assignTask(task.id, chosen);
+      } else {
+        await createNewTask({
+          title,
+          description,
+          boardId: parseInt(boardId),
+          columnId: parseInt(columnId),
+          priority,
+          assigneeId: chosen,
+          estimatedEffortHours: parseFloat(estimatedEffort),
+          position: 0
+        });
+      }
       onTaskSaved();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create task');
+      setError(err.response?.data?.message || (task ? 'Failed to assign task' : 'Failed to create task'));
     } finally {
       setLoading(false);
     }
   };
+
+  // If the current assignee is not in the list (e.g. later deactivated), still show them
+  const currentMissing = task && task.assigneeId && !people.some((p) => p.id === task.assigneeId);
 
   return (
     <div className="modal-overlay">
@@ -80,12 +104,23 @@ export default function TaskModal({ boardId, task, onClose, onTaskSaved }) {
             </div>
           </div>
 
-          {!task && (
-            <div className="modal-actions">
-              <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-              <button type="submit" className="btn-primary" disabled={loading}>{loading ? 'Saving...' : 'Save Task'}</button>
-            </div>
-          )}
+          <div className="form-group">
+            <label>Assign to</label>
+            <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
+              <option value="">Unassigned</option>
+              {currentMissing && <option value={String(task.assigneeId)}>{task.assigneeName || `User #${task.assigneeId}`}</option>}
+              {people.map((p) => (
+                <option key={p.id} value={String(p.id)}>{p.name} ({p.systemRoleName})</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="modal-actions">
+            <button type="button" className="btn-secondary" onClick={onClose}>{task ? 'Close' : 'Cancel'}</button>
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading ? 'Saving...' : (task ? 'Save Assignee' : 'Save Task')}
+            </button>
+          </div>
         </form>
       </div>
     </div>

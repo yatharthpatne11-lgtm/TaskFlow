@@ -24,3 +24,13 @@ export const updateQuickNote = async (taskId, quickNote) => {
   const response = await apiClient.patch(`/tasks/${taskId}/quick-note`, { quickNote });
   return response.data;
 };
+
+export const fetchAssignableUsers = async () => {
+  const response = await apiClient.get('/users/assignable');
+  return response.data;
+};
+
+export const assignTask = async (taskId, assigneeId) => {
+  const response = await apiClient.patch(`/tasks/${taskId}/assignee`, { assigneeId });
+  return response.data;
+};

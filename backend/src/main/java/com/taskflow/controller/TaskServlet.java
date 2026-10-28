@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.taskflow.dao.TaskDAO;
+import com.taskflow.dao.UserDAO;
 import com.taskflow.dto.ApiResponse;
 import com.taskflow.model.Task;
 import com.taskflow.model.User;
+import com.taskflow.util.SessionUser;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.*;
@@ -23,12 +25,23 @@ public class TaskServlet extends HttpServlet {
     private static final int MAX_QUICK_NOTE_LENGTH = 1000;
     private static final Pattern QUICK_NOTE_PATH = Pattern.compile("^/(\\d+)/quick-note/?$");
 
+    private static final Pattern ASSIGNEE_PATH = Pattern.compile("^/(\\d+)/assignee/?$");
+
     private final TaskDAO taskDAO = new TaskDAO();
+    private final UserDAO userDAO = new UserDAO();
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
-    // Only the ADMIN role may add, move, or delete tasks.
-    private static boolean isAdmin(User user) {
-        return user != null && "ADMIN".equalsIgnoreCase(user.getSystemRoleName());
+    // ADMIN and MANAGER may add, move, assign and delete tasks. MEMBER and VIEWER are read-only
+    // (apart from the assignee editing their own quick note).
+    private static boolean canManageTasks(User user) {
+        return user != null
+                && ("ADMIN".equalsIgnoreCase(user.getSystemRoleName())
+                    || "MANAGER".equalsIgnoreCase(user.getSystemRoleName()));
+    }
+
+    private boolean isActiveUser(int userId) {
+        Optional<User> u = userDAO.findById(userId);
+        return u.isPresent() && "ACTIVE".equalsIgnoreCase(u.get().getStatus());
     }
 
     // Servlet 3.0 HttpServlet has no doPatch(), so PATCH requests are routed manually.
@@ -64,8 +77,7 @@ public class TaskServlet extends HttpServlet {
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setContentType("application/json");
-        HttpSession session = req.getSession(false);
-        User currentUser = (session != null) ? (User) session.getAttribute("user") : null;
+        User currentUser = SessionUser.current(req);
 
         if (currentUser == null) {
             resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -73,14 +85,19 @@ public class TaskServlet extends HttpServlet {
             return;
         }
 
-        if (!isAdmin(currentUser)) {
+        if (!canManageTasks(currentUser)) {
             resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            objectMapper.writeValue(resp.getWriter(), ApiResponse.error("Access Denied: Only ADMIN can add tasks."));
+            objectMapper.writeValue(resp.getWriter(), ApiResponse.error("Access Denied: Only ADMIN or MANAGER can add tasks."));
             return;
         }
 
         try {
             Task task = objectMapper.readValue(req.getInputStream(), Task.class);
+            if (task.getAssigneeId() != null && !isActiveUser(task.getAssigneeId())) {
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                objectMapper.writeValue(resp.getWriter(), ApiResponse.error("Assignee must be an active user."));
+                return;
+            }
             task.setCreatorId(currentUser.getId());
             Task created = taskDAO.create(task);
 
@@ -95,12 +112,11 @@ public class TaskServlet extends HttpServlet {
     @Override
     protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setContentType("application/json");
-        HttpSession session = req.getSession(false);
-        User currentUser = (session != null) ? (User) session.getAttribute("user") : null;
+        User currentUser = SessionUser.current(req);
 
-        if (!isAdmin(currentUser)) {
+        if (!canManageTasks(currentUser)) {
             resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            objectMapper.writeValue(resp.getWriter(), ApiResponse.error("Access Denied: Only ADMIN can change tasks."));
+            objectMapper.writeValue(resp.getWriter(), ApiResponse.error("Access Denied: Only ADMIN or MANAGER can change tasks."));
             return;
         }
 
@@ -125,8 +141,7 @@ public class TaskServlet extends HttpServlet {
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
 
-        HttpSession session = req.getSession(false);
-        User currentUser = (session != null) ? (User) session.getAttribute("user") : null;
+        User currentUser = SessionUser.current(req);
 
         if (currentUser == null) {
             resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -135,6 +150,13 @@ public class TaskServlet extends HttpServlet {
         }
 
         String pathInfo = req.getPathInfo();
+
+        Matcher assignMatcher = ASSIGNEE_PATH.matcher(pathInfo == null ? "" : pathInfo);
+        if (assignMatcher.matches()) {
+            handleAssign(Integer.parseInt(assignMatcher.group(1)), currentUser, req, resp);
+            return;
+        }
+
         Matcher matcher = QUICK_NOTE_PATH.matcher(pathInfo == null ? "" : pathInfo);
         if (!matcher.matches()) {
             resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
@@ -186,15 +208,52 @@ public class TaskServlet extends HttpServlet {
         }
     }
 
+    // PATCH /api/tasks/{id}/assignee  -> body: { "assigneeId": 3 }  (or null to unassign)
+    private void handleAssign(int taskId, User currentUser, HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        if (!canManageTasks(currentUser)) {
+            resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            objectMapper.writeValue(resp.getWriter(), ApiResponse.error("Access Denied: Only ADMIN or MANAGER can assign tasks."));
+            return;
+        }
+        try {
+            Optional<Task> found = taskDAO.findById(taskId);
+            if (!found.isPresent()) {
+                resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                objectMapper.writeValue(resp.getWriter(), ApiResponse.error("Task not found"));
+                return;
+            }
+
+            JsonNode body = objectMapper.readTree(req.getInputStream());
+            if (body == null || !body.has("assigneeId")) {
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                objectMapper.writeValue(resp.getWriter(), ApiResponse.error("assigneeId field is required (use null to unassign)."));
+                return;
+            }
+
+            Integer assigneeId = body.get("assigneeId").isNull() ? null : body.get("assigneeId").asInt();
+            if (assigneeId != null && !isActiveUser(assigneeId)) {
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                objectMapper.writeValue(resp.getWriter(), ApiResponse.error("Assignee must be an active user."));
+                return;
+            }
+
+            taskDAO.updateAssignee(taskId, assigneeId);
+            Task updated = taskDAO.findById(taskId).orElse(found.get());
+            objectMapper.writeValue(resp.getWriter(), ApiResponse.success("Task assignee updated", updated));
+        } catch (Exception e) {
+            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            objectMapper.writeValue(resp.getWriter(), ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @Override
     protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setContentType("application/json");
-        HttpSession session = req.getSession(false);
-        User currentUser = (session != null) ? (User) session.getAttribute("user") : null;
+        User currentUser = SessionUser.current(req);
 
-        if (!isAdmin(currentUser)) {
+        if (!canManageTasks(currentUser)) {
             resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            objectMapper.writeValue(resp.getWriter(), ApiResponse.error("Access Denied: Only ADMIN can delete tasks."));
+            objectMapper.writeValue(resp.getWriter(), ApiResponse.error("Access Denied: Only ADMIN or MANAGER can delete tasks."));
             return;
         }
 
