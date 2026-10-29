@@ -22,6 +22,11 @@ import java.util.regex.Pattern;
 @WebServlet("/api/tasks/*")
 public class TaskServlet extends HttpServlet {
 
+    // Kanban WIP limit: at most IN_PROGRESS_WIP_LIMIT tasks may sit in the IN PROGRESS column at once.
+    private static final int IN_PROGRESS_COLUMN_ID = 3;
+    private static final int IN_PROGRESS_WIP_LIMIT = 3;
+    private static final Object WIP_LOCK = new Object(); // makes "check count, then write" one step
+
     private static final int MAX_QUICK_NOTE_LENGTH = 1000;
     private static final Pattern QUICK_NOTE_PATH = Pattern.compile("^/(\\d+)/quick-note/?$");
 
@@ -37,6 +42,17 @@ public class TaskServlet extends HttpServlet {
         return user != null
                 && ("ADMIN".equalsIgnoreCase(user.getSystemRoleName())
                     || "MANAGER".equalsIgnoreCase(user.getSystemRoleName()));
+    }
+
+    /** Returns an error message if one more task in this column would break its WIP limit, otherwise null. */
+    private String wipViolation(Integer columnId) {
+        if (columnId == null || columnId != IN_PROGRESS_COLUMN_ID) return null;
+        int current = taskDAO.countByColumnId(columnId);
+        if (current >= IN_PROGRESS_WIP_LIMIT) {
+            return "WIP limit reached: IN PROGRESS allows at most " + IN_PROGRESS_WIP_LIMIT
+                    + " tasks (currently " + current + "). Finish a task before starting another.";
+        }
+        return null;
     }
 
     private boolean isActiveUser(int userId) {
@@ -99,7 +115,17 @@ public class TaskServlet extends HttpServlet {
                 return;
             }
             task.setCreatorId(currentUser.getId());
-            Task created = taskDAO.create(task);
+
+            Task created;
+            synchronized (WIP_LOCK) {
+                String wip = wipViolation(task.getColumnId());
+                if (wip != null) {
+                    resp.setStatus(HttpServletResponse.SC_CONFLICT);
+                    objectMapper.writeValue(resp.getWriter(), ApiResponse.error(wip));
+                    return;
+                }
+                created = taskDAO.create(task);
+            }
 
             resp.setStatus(HttpServletResponse.SC_CREATED);
             objectMapper.writeValue(resp.getWriter(), ApiResponse.success("Task created successfully", created));
@@ -122,7 +148,23 @@ public class TaskServlet extends HttpServlet {
 
         try {
             Task taskUpdate = objectMapper.readValue(req.getInputStream(), Task.class);
-            boolean updated = taskDAO.updateColumnAndPosition(taskUpdate.getId(), taskUpdate.getColumnId(), taskUpdate.getPosition() != null ? taskUpdate.getPosition() : 0);
+            boolean updated;
+            synchronized (WIP_LOCK) {
+                Optional<Task> existing = taskDAO.findById(taskUpdate.getId());
+                if (!existing.isPresent()) {
+                    resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                    objectMapper.writeValue(resp.getWriter(), ApiResponse.error("Task not found"));
+                    return;
+                }
+                boolean changingColumn = !existing.get().getColumnId().equals(taskUpdate.getColumnId());
+                String wip = changingColumn ? wipViolation(taskUpdate.getColumnId()) : null;
+                if (wip != null) {
+                    resp.setStatus(HttpServletResponse.SC_CONFLICT);
+                    objectMapper.writeValue(resp.getWriter(), ApiResponse.error(wip));
+                    return;
+                }
+                updated = taskDAO.updateColumnAndPosition(taskUpdate.getId(), taskUpdate.getColumnId(), taskUpdate.getPosition() != null ? taskUpdate.getPosition() : 0);
+            }
             
             if (updated) {
                 objectMapper.writeValue(resp.getWriter(), ApiResponse.success("Task moved successfully", taskUpdate));

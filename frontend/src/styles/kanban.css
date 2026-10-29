@@ -102,3 +102,6 @@
   .search-box { max-width: none; }
   .form-row { grid-template-columns: 1fr; }
 }
+
+/* WIP limit reached */
+.task-count.at-limit { background: var(--berry-tint); color: var(--berry); font-weight: 700; }

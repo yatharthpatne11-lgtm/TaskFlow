@@ -82,6 +82,19 @@ public class TaskDAO {
         }
     }
 
+    public int countByColumnId(int columnId) {
+        String sql = "SELECT COUNT(*) FROM tasks WHERE column_id = ?";
+        try (Connection conn = DbConfig.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, columnId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        } catch (SQLException e) {
+            throw new DatabaseException("Failed to count tasks in column ID: " + columnId, e);
+        }
+    }
+
     public boolean updateAssignee(int taskId, Integer assigneeId) {
         String sql = "UPDATE tasks SET assignee_id = ?, updated_at = NOW() WHERE id = ?";
         try (Connection conn = DbConfig.getConnection();
